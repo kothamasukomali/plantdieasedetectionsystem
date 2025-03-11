@@ -61,7 +61,7 @@ def add_background(image_url):
 
 # Load and predict function
 def model_predict(uploaded_file):
-    model = tf.keras.models.load_model("CNN_plantdiseases_model.keras")
+    model = tf.keras.models.load_model(r"c:\Users\kotha\Downloads\CNN_plantdiseases_model.keras")
 
     image = Image.open(uploaded_file).convert('RGB')
     image = image.resize((224, 224))
