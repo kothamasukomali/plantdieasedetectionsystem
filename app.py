@@ -1,98 +1,107 @@
 import streamlit as st
 import tensorflow as tf
 import numpy as np
-import cv2
-import os
 from PIL import Image
 
-# ✅ Define model path
-MODEL_PATH = "CNN_plantdiseases_model.keras"  # Ensure this file exists!
+# Class label mapping
+CLASS_LABELS = {
+    0: 'Apple___Apple_scab',
+    1: 'Apple___Black_rot',
+    2: 'Apple___Cedar_apple_rust',
+    3: 'Apple___healthy',
+    4: 'Blueberry___healthy',
+    5: 'Cherry_(including_sour)___Powdery_mildew',
+    6: 'Cherry_(including_sour)___healthy',
+    7: 'Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot',
+    8: 'Corn_(maize)___Common_rust_',
+    9: 'Corn_(maize)___Northern_Leaf_Blight',
+    10: 'Corn_(maize)___healthy',
+    11: 'Grape___Black_rot',
+    12: 'Grape___Esca_(Black_Measles)',
+    13: 'Grape___Leaf_blight_(Isariopsis_Leaf_Spot)',
+    14: 'Grape___healthy',
+    15: 'Orange___Haunglongbing_(Citrus_greening)',
+    16: 'Peach___Bacterial_spot',
+    17: 'Peach___healthy',
+    18: 'Pepper,_bell___Bacterial_spot',
+    19: 'Pepper,_bell___healthy',
+    20: 'Potato___Early_blight',
+    21: 'Potato___Late_blight',
+    22: 'Potato___healthy',
+    23: 'Raspberry___healthy',
+    24: 'Soybean___healthy',
+    25: 'Squash___Powdery_mildew',
+    26: 'Strawberry___Leaf_scorch',
+    27: 'Strawberry___healthy',
+    28: 'Tomato___Bacterial_spot',
+    29: 'Tomato___Early_blight',
+    30: 'Tomato___Late_blight',
+    31: 'Tomato___Leaf_Mold',
+    32: 'Tomato___Septoria_leaf_spot',
+    33: 'Tomato___Spider_mites Two-spotted_spider_mite',
+    34: 'Tomato___Target_Spot',
+    35: 'Tomato___Tomato_Yellow_Leaf_Curl_Virus',
+    36: 'Tomato___Tomato_mosaic_virus',
+    37: 'Tomato___healthy'
+}
 
-# ✅ Load model safely
-@st.cache_resource
-def load_model():
-    try:
-        model = tf.keras.models.load_model(MODEL_PATH)
-        st.success("✅ Model Loaded Successfully!")
-        return model
-    except Exception as e:
-        st.error(f"❌ Model loading failed: {str(e)}")
-        return None
+# Function to set background
+def add_background(image_url):
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-image: url("{image_url}");
+            background-size: cover;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
-model = load_model()  # Load model once
+# Load and predict function
+def model_predict(uploaded_file):
+    model = tf.keras.models.load_model(r"c:\Users\kotha\Downloads\CNN_plantdiseases_model.keras")
 
-# ✅ Function to preprocess and predict
-def model_predict(image_path):
-    if model is None:
-        st.error("⚠ Model not loaded. Please check the logs.")
-        return None
+    image = Image.open(uploaded_file).convert('RGB')
+    image = image.resize((224, 224))
+    img_array = np.array(image).astype("float32") / 255.0
+    img_array = np.expand_dims(img_array, axis=0)
 
-    try:
-        H, W, C = 224, 224, 3
-        img = cv2.imread(image_path)
+    predictions = model.predict(img_array)
+    result_index = np.argmax(predictions)
+    confidence = np.max(predictions) * 100
 
-        if img is None:
-            st.error("⚠ Unable to read the image. Please upload a valid image file.")
-            return None
+    return result_index, confidence
 
-        img = cv2.resize(img, (H, W))
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        img = img.astype("float32") / 255.0  # Normalize
-        img = img.reshape(1, H, W, C)  # Reshape
+# UI
+add_background("https://images.unsplash.com/photo-1596631133404-2f3948ed7ccc?fm=jpg&q=60&w=3000")
 
-        preds = model.predict(img)
-        if preds is None or len(preds) == 0:
-            st.error("⚠ Model prediction failed.")
-            return None
-
-        return np.argmax(preds, axis=-1)[0]
-
-    except Exception as e:
-        st.error(f"❌ Prediction error: {str(e)}")
-        return None
-
-# ✅ Sidebar Navigation
 st.sidebar.title("🌿 Plant Disease Detection System")
-app_mode = st.sidebar.selectbox("Select Page", ["HOME", "DISEASE RECOGNITION"])
+app_mode = st.sidebar.selectbox("📌 Select Page", ["HOME", "DISEASE RECOGNITION"])
 
-# ✅ Home Page
 if app_mode == "HOME":
-    st.markdown("<h1 style='text-align: center;'>🌱 Plant Disease Detection System</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>🌱 Plant Disease Detection System for Sustainable Agriculture</h1>", unsafe_allow_html=True)
 
-# ✅ Disease Recognition Page
 elif app_mode == "DISEASE RECOGNITION":
-    st.header("📷 Upload an Image for Disease Detection")
+    st.header("🔍 Upload an Image for Disease Recognition")
 
-    test_image = st.file_uploader("Choose an Image", type=["jpg", "png", "jpeg"])
+    test_image = st.file_uploader("Choose an Image:", type=["jpg", "png", "jpeg"])
 
-    if test_image:
-        st.image(test_image, use_column_width=True, caption="Uploaded Image")
+    if test_image is not None:
+        if st.button("Show Image"):
+            st.image(test_image, use_column_width=True)
 
-        # Save uploaded file temporarily
-        save_path = os.path.join(os.getcwd(), test_image.name)
-        with open(save_path, "wb") as f:
-            f.write(test_image.getbuffer())
+        if st.button("Predict"):
+            st.snow()
+            st.write("🔍 Analyzing... Please wait.")
 
-        if st.button("🔍 Predict"):
-            st.snow()  # Animation
-            result_index = model_predict(save_path)
+            result_index, confidence = model_predict(test_image)
+            predicted_class = CLASS_LABELS[result_index]
 
-            if result_index is not None:
-                class_names = [
-                    'Apple___Apple_scab', 'Apple___Black_rot', 'Apple___Cedar_apple_rust', 'Apple___healthy',
-                    'Blueberry___healthy', 'Cherry_(including_sour)___Powdery_mildew', 
-                    'Cherry_(including_sour)___healthy', 'Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot', 
-                    'Corn_(maize)___Common_rust_', 'Corn_(maize)___Northern_Leaf_Blight', 'Corn_(maize)___healthy', 
-                    'Grape___Black_rot', 'Grape___Esca_(Black_Measles)', 'Grape___Leaf_blight_(Isariopsis_Leaf_Spot)', 
-                    'Grape___healthy', 'Orange___Haunglongbing_(Citrus_greening)', 'Peach___Bacterial_spot',
-                    'Peach___healthy', 'Pepper,_bell___Bacterial_spot', 'Pepper,_bell___healthy', 
-                    'Potato___Early_blight', 'Potato___Late_blight', 'Potato___healthy', 
-                    'Raspberry___healthy', 'Soybean___healthy', 'Squash___Powdery_mildew', 
-                    'Strawberry___Leaf_scorch', 'Strawberry___healthy', 'Tomato___Bacterial_spot', 
-                    'Tomato___Early_blight', 'Tomato___Late_blight', 'Tomato___Leaf_Mold', 
-                    'Tomato___Septoria_leaf_spot', 'Tomato___Spider_mites Two-spotted_spider_mite', 
-                    'Tomato___Target_Spot', 'Tomato___Tomato_Yellow_Leaf_Curl_Virus', 'Tomato___Tomato_mosaic_virus',
-                    'Tomato___healthy'
-                ]
+            st.success(f"🌿 **Prediction:** {predicted_class}")
+            st.info(f"🎯 **Confidence:** {confidence:.2f}%")
 
-                st.success(f"🍃 Model Prediction: **{class_names[result_index]}**")
+            if confidence < 50:
+                st.warning("⚠️ Low confidence in prediction. Try using a clearer image.")
+
