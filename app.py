@@ -5,49 +5,59 @@ import cv2
 import os
 from PIL import Image
 
-# ✅ Update MODEL_PATH: Use relative path for Streamlit Cloud
-MODEL_PATH = "CNN_plantdiseases_model.keras"  # Place model in the same directory
+# ✅ Define model path
+MODEL_PATH = "CNN_plantdiseases_model.keras"  # Ensure this file exists!
 
-# ✅ Function to load the model safely
+# ✅ Load model safely
 @st.cache_resource
 def load_model():
     try:
         model = tf.keras.models.load_model(MODEL_PATH)
+        st.success("✅ Model Loaded Successfully!")
         return model
-    except ValueError as e:
-        st.error(f"Model loading error: {str(e)}")
+    except Exception as e:
+        st.error(f"❌ Model loading failed: {str(e)}")
         return None
 
 model = load_model()  # Load model once
 
 # ✅ Function to preprocess and predict
 def model_predict(image_path):
-    H, W, C = 224, 224, 3
-    img = cv2.imread(image_path)
-
-    if img is None:
-        st.error("Error: Unable to read the image. Please upload a valid image file.")
+    if model is None:
+        st.error("⚠ Model not loaded. Please check the logs.")
         return None
 
-    img = cv2.resize(img, (H, W))
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    img = img.astype("float32") / 255.0  # Normalize
-    img = img.reshape(1, H, W, C)  # Reshape
+    try:
+        H, W, C = 224, 224, 3
+        img = cv2.imread(image_path)
 
-    preds = model.predict(img)
-    if preds is None or len(preds) == 0:
-        st.error("Error: Model prediction failed.")
+        if img is None:
+            st.error("⚠ Unable to read the image. Please upload a valid image file.")
+            return None
+
+        img = cv2.resize(img, (H, W))
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = img.astype("float32") / 255.0  # Normalize
+        img = img.reshape(1, H, W, C)  # Reshape
+
+        preds = model.predict(img)
+        if preds is None or len(preds) == 0:
+            st.error("⚠ Model prediction failed.")
+            return None
+
+        return np.argmax(preds, axis=-1)[0]
+
+    except Exception as e:
+        st.error(f"❌ Prediction error: {str(e)}")
         return None
 
-    return np.argmax(preds, axis=-1)[0]
-
-# ✅ Sidebar for Navigation
+# ✅ Sidebar Navigation
 st.sidebar.title("🌿 Plant Disease Detection System")
 app_mode = st.sidebar.selectbox("Select Page", ["HOME", "DISEASE RECOGNITION"])
 
-# ✅ Display Home Page
+# ✅ Home Page
 if app_mode == "HOME":
-    st.markdown("<h1 style='text-align: center;'>🌱 Plant Disease Detection System for Sustainable Agriculture</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>🌱 Plant Disease Detection System</h1>", unsafe_allow_html=True)
 
 # ✅ Disease Recognition Page
 elif app_mode == "DISEASE RECOGNITION":
